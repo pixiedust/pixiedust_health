@@ -25,35 +25,34 @@ diseaseMap = {1: {'DisplayName': 'Diabetes',
 
 
 # Class for storing data and generating DataFrames and matrices for UI and machine learning
+# Requires 3 pandas data frames from create_v_demographic.csv, create_v_diagnosis.csv, and create_v_observation.csv
 class Cohorts:
-    def __init__(self, pathToData):
-        demographics = pandas.read_csv(pathToData + '/create_v_demographic.csv', delimiter="\t")
+    #     def __init__(self, pathToData):
+    def __init__(self, demographics, diagnosis, observations):
+        #         demographics = pandas.read_csv(pathToData + '/create_v_demographic.csv', delimiter="\t")
+        # print "demographics starting"
         self.demographics = self.__filterDemographics(demographics)
+        # print "demographics done"
 
-        diagnosis = pandas.read_csv(pathToData + '/create_v_diagnosis.csv', delimiter="\t")
-        self.histories = self.__filterHistories(diagnosis)
-        self.diagnosis = self.__filterDiagnosis(diagnosis)
+        #         diagnosis = pandas.read_csv(pathToData + '/create_v_diagnosis.csv', delimiter="\t")
+        # print "histories starting"
+        self.histories = self.__filterDiagnosis(diagnosis)
+        #         self.diagnosis = self.__filterDiagnosis(diagnosis)
+        #         self.histories, self.diagnosis = self.__filterDiagnosis(diagnosis)
+        # print "histories done"
 
-        observations = pandas.read_csv(pathToData + '/create_v_observation.csv', delimiter="\t")
+        #         observations = pandas.read_csv(pathToData + '/create_v_observation.csv', delimiter="\t")
+        # print "observations starting"
         self.demographics = self.__getFeatures(observations)
+        # print "observations done"
 
-    # Returns filtered preliminary demographics data frame
+    # Returns filtered demographics data frame
     # Requires original demographics chart
     def __filterDemographics(self, demographics):
         filteredDemographics = demographics[['EXPLORYS_PATIENT_ID', 'STD_GENDER', 'BIRTH_YEAR', 'STD_RACE']]
         ages = filteredDemographics['BIRTH_YEAR'].map(lambda x: 2017 - int(x))
         filteredDemographics['AGE'] = ages.values
         return filteredDemographics.drop('BIRTH_YEAR', 1)
-
-    # Returns data frame of diseases each patient has been diagnosed with
-    # Requires original diagnosis histories chart
-    def __filterHistories(self, histories):
-        filteredHistories = histories[['EXPLORYS_PATIENT_ID', 'SNOMED_IDS']]
-        snomedIDs = filteredHistories['SNOMED_IDS'].map(
-            lambda x: tuple(x.split(',')) if isinstance(x, str) else tuple())
-        filteredHistories['SNOMED_IDS'] = snomedIDs.values
-        filteredHistories = filteredHistories.groupby(['EXPLORYS_PATIENT_ID'], as_index=False).sum()
-        return filteredHistories
 
     # Returns diagnosis history data frame
     # Requires original diagnosis histories chart
@@ -62,7 +61,6 @@ class Cohorts:
         snomedIDs = filteredHistories['SNOMED_IDS'].map(
             lambda x: tuple(x.split(',')) if isinstance(x, str) else tuple())
         filteredHistories['SNOMED_IDS'] = snomedIDs.values
-        filteredHistories = filteredHistories.groupby(['EXPLORYS_PATIENT_ID', 'DIAGNOSIS_DATE'], as_index=False).sum()
         return filteredHistories
 
     # Returns filtered observation data frame
@@ -93,9 +91,14 @@ class Cohorts:
                 patients = self.getPatientsWithoutDisease(diseaseID)
             else:
                 patients = self.getPatientsWithDisease(diseaseID)
-            # Cache last dataframe generated
+            # Cache last dataframe generated?
             return self.demographics.loc[self.demographics['EXPLORYS_PATIENT_ID'].isin(patients)]
         return self.demographics
+
+    # Returns a list of all patients we have a medical history for
+    # Facilitates getPatientsWithoutDisease()
+    def getPatients(self):
+        return set(self.histories['EXPLORYS_PATIENT_ID'].values)
 
     # Returns list of IDs for patients with a given disease
     # Requires disease ID
@@ -104,21 +107,34 @@ class Cohorts:
         snomedIDs = diseaseMap[diseaseID]['SnomedIds']
         filtered = self.histories.loc[
             [not (set(history).isdisjoint(snomedIDs)) for history in self.histories['SNOMED_IDS']]]
-        return list(set(filtered['EXPLORYS_PATIENT_ID'].values))
+        return set(filtered['EXPLORYS_PATIENT_ID'].values)
 
     # Returns list of IDs for patients without a given disease
     # Requires disease ID
     # Facilitates getDemographics()
     def getPatientsWithoutDisease(self, diseaseID):
-        snomedIDs = diseaseMap[diseaseID]['SnomedIds']
-        filtered = self.histories.loc[[set(history).isdisjoint(snomedIDs) for history in self.histories['SNOMED_IDS']]]
-        return list(set(filtered['EXPLORYS_PATIENT_ID'].values))
+        return self.getPatients() - self.getPatientsWithDisease(diseaseID)
 
     # Returns a numpy matrix of features
     # Filters by a certain disease if disease ID is given
     # Returns only certain features if features are specified
+    # Designed to be used for machine learning component
     def getFeatureVectors(self, diseaseID=None, features=None, negative=False):
         ret = self.getDemographics(diseaseID, negative)
         if features:
             return ret[features].as_matrix()
         return ret[['STD_GENDER', 'STD_RACE', 'AGE', 'HBA1C', 'WEIGHT']].as_matrix()
+
+    # Returns a Data Frame of diagnosis dates and corresponding snomed IDs for a given patient
+    # Requires a patient ID
+    # Facilitates getMosPriorToDiagnosis()
+    def getDiagnosisHistory(self, patientID):
+        patientHistory = self.histories.loc[self.histories['EXPLORYS_PATIENT_ID'] == patientID].drop(
+            'EXPLORYS_PATIENT_ID', 1)
+        return patientHistory.groupby('DIAGNOSIS_DATE', as_index=False).sum()
+
+    # Unfinished function being worked on by Katie
+    # Gets the average value of given measurement (loincID) for twelve months before patient's diagnosis
+    # May be included in demographics/feature vectors
+    def getYearPriorToDiagnosis(self, patientID, loincID):
+        patientObservations = self.getDiagnosisHistory(patientID)
