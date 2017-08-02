@@ -1,0 +1,169 @@
+<style>
+  .page-classification {
+    border: none;
+    margin: 0;
+    padding: 10px;
+  }
+  .page-classification div[pd_render_onload] {
+    height: 100%;
+  }
+  .page-title {
+    border-bottom: 1px solid #e9e9e9;
+    font-size: 1.2em !important;
+    margin: 0 !important;
+    padding: 0 0 5px 0;
+    position: relative;
+  }
+  .page-disease {
+    color: red;
+    font-weight: 400;
+  }
+  .page-features,
+  .page-model {
+    margin: 50px 0 25px 0;
+  }
+  .page-features {
+    height: 20%;
+    overflow: auto;
+  }
+  .page-model {
+    height: calc(80% - 180px);
+    overflow: auto;
+  }
+  .page-model > div {
+    height: 100%;
+    padding: 0 15px;
+  }
+  .page-features h2,
+  .page-model h2 {
+    border-bottom: 1px dashed #d9d9d9;
+    color: #555;
+    font-size: 16px !important;
+    font-weight: 400 !important;
+    letter-spacing: 1px;
+    margin: 0 0 10px !important;
+    padding: 0 0 5px;
+    position: relative;
+    text-transform: uppercase;
+  }
+  .page-feature {
+    padding: 10px 10px 10px 0;
+  }
+  .page-feature > button {
+    min-height: 50px;
+    width: 100%;
+  }
+  .page-feature > button.active::after {
+    bottom: 10px;
+    content: "\2713";
+    font-size: 20px;
+    position: absolute;
+    right: 15px;
+  }
+  .page-model .page-model-info {
+    /* border: 1px solid #e9e9e9; */
+    margin: 5px;
+    height: 300px;
+  }
+  .page-roc .page-model-info {
+    height: calc(100% - 45px);
+  }
+  .page-apr p {
+    font-size: 2em;
+  }
+  .page-apr p > span {
+    color: red;
+  }
+  .page-apr p > span::after {
+    content: "%";
+  }
+  .page-importance {
+    font-size: 1.25em;
+  }
+  .page-buttons {
+    text-align: right;
+  }
+  .btn-link {
+    bottom: -5px;
+    position: absolute;
+    right: 10px;
+  }
+  .btn-link:hover,
+  .btn-link:focus {
+    background-color: transparent !important;
+    border: 0 none;
+  }
+</style>
+<script>
+function activeFeatures() {
+  var active = []
+  $('#classification{{prefix}} .page-feature > button.active').each(function () {
+    active.push($(this).text())
+  })
+  console.log('activeFeatures', active)
+  return active.join(',')
+}
+</script>
+<div id="classification{{prefix}}" class="page-classification"
+  pixiedust="{{pd_controls|htmlAttribute}}" >
+
+
+  <h2 class="page-title">
+    <span>Classification Model:</span>
+    <span class="page-disease">{{ disease }}</span>
+    <button type="button" class="btn btn-default btn-link"
+      pd_options="page=start">Change Disease</button>
+  </h2>
+
+  <div class="row page-features">
+    <h2>
+      <span>Features</span>
+      <button type="button" class="btn btn-default btn-link"
+          pd_options="page=classification">Update Model
+        <pd_script>
+self.selectedFeatures("$val(activeFeatures)")
+        </pd_script>
+      </button>
+    </h2>
+{% for feature in features %}
+    <div class="col-xs-2 page-feature">
+      <button type="button" class="btn btn-default {% if feature[1] == 'true' %}active{% endif %}" onclick="javascript:$(this).toggleClass('active')">{{ feature[0] }}</button>
+    </div>
+{% endfor %}
+  </div>
+
+  <div class="row page-model">
+    <div class="col-xs-4 page-apr">
+      <h2>Score</h2>
+      <div class="page-model-info">
+        <p>Accuracy: <span>{{ modelapr['accuracy'] }}</span></p>
+        <p>Precision: <span>{{ modelapr['precision'] }}</span></p>
+        <p>Recall: <span>{{ modelapr['recall'] }}</span></p>
+      </div>
+    </div>
+    <div class="col-xs-4 page-roc">
+      <h2>ROC</h2>
+      <div class="page-model-info">
+          <div pd_render_onload pd_entity="dataframe3"
+           pd_options="rendererId=matplotlib;handlerId=lineChart;keyFields=str1;valueFields=num1;legend=false"></div>
+      </div>
+    </div>
+    <div class="col-xs-4 page-importance">
+      <h2>Feature Importance</h2>
+      <div class="page-model-info">
+        <ol>
+{% for feature in featureimportance %}
+          <li>{{ feature }}</li>
+{% endfor %}
+        </ol>
+      </div>
+    </div>
+  </div>
+
+  <div class="row page-buttons">
+        <button type="button" class="btn btn-primary"
+          pd_options="page=analytics">View Analytics</button>
+  </div>
+</div>
+
+

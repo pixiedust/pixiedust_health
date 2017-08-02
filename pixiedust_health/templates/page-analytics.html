@@ -1,0 +1,107 @@
+<style>
+  .page-analytics {
+    border: none;
+    margin: 0;
+    padding: 10px;
+  }
+  .page-title {
+    border-bottom: 1px solid #e9e9e9;
+    font-size: 1.2em !important;
+    margin: 0 !important;
+    padding: 0 0 5px 0;
+    position: relative;
+  }
+  .page-disease {
+    color: red;
+    font-weight: 400;
+  }
+  .page-charts {
+    height: calc(100% - 145px);
+    margin: 50px 0 25px 0;
+    overflow: auto;
+  }
+  .page-charts > div {
+    height: 100%;
+  }
+  .page-charts .half-size {
+    height: 50%;
+  }
+  .page-charts div[pd_render_onload] {
+    height: 100%;
+  }
+  .page-chart-bar,
+  .page-chart-scat,
+  .page-chart-hist,
+  .page-chart-pie {
+    border: 1px solid #e9e9e9; 
+    height: 100%;
+    padding: 5px;
+  }
+  .page-chart-map {
+    /* border: 1px solid #e9e9e9; */
+    padding: 5px;
+  }
+  .page-buttons {
+    text-align: right;
+  }
+  .btn-link {
+    bottom: -5px;
+    position: absolute;
+    right: 10px;
+  }
+  .btn-link:hover,
+  .btn-link:focus {
+    background-color: transparent !important;
+    border: 0 none;
+  }
+</style>
+<div class="page-analytics"
+  pixiedust="{{pd_controls|htmlAttribute}}" >
+
+
+  <h2 class="page-title">
+    <span>Descriptive Analytics:</span>
+    <span class="page-disease">{{ disease }}</span>
+    <button type="button" class="btn btn-default btn-link"
+      pd_options="page=start">Change Disease</button>
+  </h2>
+
+  <div class="row page-charts">
+    <div class="col-xs-6">
+      <div class="row half-size">
+        <div class="col-xs-6 page-chart-bar">
+          <!-- ? bar chart //disease by race ? -->
+          <div pd_render_onload pd_entity="dataframe1"
+           pd_options="rendererId=matplotlib;handlerId=barChart;keyFields=str1;valueFields=num1;legend=false"></div>
+        </div>
+        <div class="col-xs-6 page-chart-scat">
+          <!-- ? scatter //age of development ? -->
+          <div pd_render_onload pd_entity="dataframe1"
+           pd_options="rendererId=matplotlib;handlerId=scatterPlot;keyFields=num1;valueFields=num2;legend=false"></div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-xs-6 page-chart-hist">
+          <!-- ? histogram //age vs # people ? -->
+          <div pd_render_onload pd_entity="dataframe2"
+           pd_options="rendererId=matplotlib;handlerId=histogram;keyFields=state1;valueFields=num1;legend=false"></div>
+        </div>
+        <div class="col-xs-6 page-chart-pie">
+          <!-- ? pie //male vs female vs undeclared ? -->
+          <div pd_render_onload pd_entity="dataframe2"
+           pd_options="rendererId=matplotlib;handlerId=pieChart;keyFields=state1;valueFields=num1;legend=false"></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-xs-6 page-chart-map">
+      <!-- ? map ? -->
+      <div pd_render_onload pd_entity="dataframe2"
+        pd_options="rendererId=google;handlerId=mapView;keyFields=state1;valueFields=num1;mapRegion=US"></div>
+    </div>
+  </div>
+
+  <div class="row page-buttons">
+        <button type="button" class="btn btn-primary"
+          pd_options="page=classification">View Classifications</button>
+  </div>
+</div>
