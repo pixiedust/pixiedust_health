@@ -26,25 +26,29 @@ diseaseMap = {1: {'DisplayName': 'Diabetes',
 
 # Class for storing data and generating DataFrames and matrices for UI and machine learning
 # Requires 3 pandas data frames from create_v_demographic.csv, create_v_diagnosis.csv, and create_v_observation.csv
+# List of columns expected in demogaphics: 'EXPLORYS_PATIENT_ID', 'STD_GENDER', 'BIRTH_YEAR', 'STD_RACE'
+# Columns expected in diagnosis: 'EXPLORYS_PATIENT_ID', 'DIAGNOSIS_DATE', 'SNOMED_IDS'
+# Columns expected in observations: 'EXPLORYS_PATIENT_ID', 'LOINC_TEST_ID', 'STD_VALUE'
 class Cohorts:
     #     def __init__(self, pathToData):
     def __init__(self, demographics, diagnosis, observations):
         #         demographics = pandas.read_csv(pathToData + '/create_v_demographic.csv', delimiter="\t")
-        # print "demographics starting"
+        print "demographics starting"
         self.demographics = self.__filterDemographics(demographics)
-        # print "demographics done"
+        print "demographics done"
 
         #         diagnosis = pandas.read_csv(pathToData + '/create_v_diagnosis.csv', delimiter="\t")
-        # print "histories starting"
+        print "histories starting"
         self.histories = self.__filterDiagnosis(diagnosis)
         #         self.diagnosis = self.__filterDiagnosis(diagnosis)
         #         self.histories, self.diagnosis = self.__filterDiagnosis(diagnosis)
-        # print "histories done"
+        print "histories done"
 
         #         observations = pandas.read_csv(pathToData + '/create_v_observation.csv', delimiter="\t")
-        # print "observations starting"
+        print "observations starting"
+        self.observations = observations
         self.demographics = self.__getFeatures(observations)
-        # print "observations done"
+        print "observations done"
 
     # Returns filtered demographics data frame
     # Requires original demographics chart
@@ -63,6 +67,9 @@ class Cohorts:
         filteredHistories['SNOMED_IDS'] = snomedIDs.values
         return filteredHistories
 
+    def __bmi(self, row):
+        return (row['WEIGHT'] / row['HEIGHT'] ** 2) * 10000
+
     # Returns filtered observation data frame
     # Requires original observations chart
     def __getFeatures(self, observations):
@@ -70,40 +77,24 @@ class Cohorts:
         filteredObservations = observations[['EXPLORYS_PATIENT_ID', 'LOINC_TEST_ID', 'STD_VALUE']]
         filteredObservations = filteredObservations.groupby(['EXPLORYS_PATIENT_ID', 'LOINC_TEST_ID'],
                                                             as_index=False).mean()
-        loincIDs = [('HBA1C', '4548-4'), ('WEIGHT', '29463-7')]
+        loincIDs = [('HBA1C', '4548-4'), ('WEIGHT', '29463-7'), ('HEIGHT', '8302-2')]
         for label, loinc in loincIDs:
             justThisLabel = filteredObservations.loc[filteredObservations['LOINC_TEST_ID'] == loinc]
             justThisLabel = justThisLabel.rename(columns={'STD_VALUE': label})
             demographicCopy = demographicCopy.merge(justThisLabel.drop('LOINC_TEST_ID', 1))
+        bmis = demographicCopy[['WEIGHT', 'HEIGHT']].apply(self.__bmi, axis=1)
+        demographicCopy['BMI'] = bmis.values
         return demographicCopy
-
-    # Returns list of (DisplayName, ID) for all diseases we have data for
-    # Designed for drop-down menu in initial window of UI
-    def getDiseases(self):
-        return [(value['DisplayName'], key) for key, value in iteritems(diseaseMap)]
-
-    # Returns Data Frame with demographics for each patient
-    # Filters by patients with a certain disease if disease ID is given
-    # Designed for descriptive analytics window of UI
-    def getDemographics(self, diseaseID=None, negative=False):
-        if diseaseID:
-            if negative:
-                patients = self.getPatientsWithoutDisease(diseaseID)
-            else:
-                patients = self.getPatientsWithDisease(diseaseID)
-            # Cache last dataframe generated?
-            return self.demographics.loc[self.demographics['EXPLORYS_PATIENT_ID'].isin(patients)]
-        return self.demographics
 
     # Returns a list of all patients we have a medical history for
     # Facilitates getPatientsWithoutDisease()
-    def getPatients(self):
+    def __getPatients(self):
         return set(self.histories['EXPLORYS_PATIENT_ID'].values)
 
     # Returns list of IDs for patients with a given disease
     # Requires disease ID
     # Facilitates getDemographics()
-    def getPatientsWithDisease(self, diseaseID):
+    def __getPatientsWithDisease(self, diseaseID):
         snomedIDs = diseaseMap[diseaseID]['SnomedIds']
         filtered = self.histories.loc[
             [not (set(history).isdisjoint(snomedIDs)) for history in self.histories['SNOMED_IDS']]]
@@ -112,18 +103,44 @@ class Cohorts:
     # Returns list of IDs for patients without a given disease
     # Requires disease ID
     # Facilitates getDemographics()
-    def getPatientsWithoutDisease(self, diseaseID):
-        return self.getPatients() - self.getPatientsWithDisease(diseaseID)
+    def __getPatientsWithoutDisease(self, diseaseID):
+        return self.__getPatients() - self.__getPatientsWithDisease(diseaseID)
+
+    # Returns a Data Frame of diagnosis dates and corresponding snomed IDs for a given patient
+    # Requires a patient ID
+    # Facilitates getYearPriorToDiagnosis()
+    def __getDiagnosisHistory(self, patientID):
+        patientHistory = self.histories.loc[self.histories['EXPLORYS_PATIENT_ID'] == patientID].drop(
+            'EXPLORYS_PATIENT_ID', 1)
+        return patientHistory.groupby('DIAGNOSIS_DATE', as_index=False).sum()
+
+    # Returns list of (DisplayName, ID) for all diseases we have data for
+    # Designed for drop-down menu in initial window of UI
+    # Example return: [('Diabetes', 1), ('Hypertension', 2)]
+    def getDiseases(self):
+        return [(value['DisplayName'], key) for key, value in iteritems(diseaseMap)]
+
+    # Returns Data Frame with demographics for each patient
+    # Filters by patients with a certain disease if disease ID is given
+    # Designed for descriptive analytics window of UI
+    def getDemographics(self, diseaseID, negative=False):
+        if negative:
+            patients = self.__getPatientsWithoutDisease(diseaseID)
+        else:
+            patients = self.__getPatientsWithDisease(diseaseID)
+        # Cache last dataframe generated?
+        return self.demographics.loc[self.demographics['EXPLORYS_PATIENT_ID'].isin(patients)]
 
     # Returns a numpy matrix of features
     # Filters by a certain disease if disease ID is given
     # Returns only certain features if features are specified
     # Designed to be used for machine learning component
-    def getFeatureVectors(self, diseaseID=None, features=None, negative=False):
-        ret = self.getDemographics(diseaseID, negative)
+    # Matrix dimensions: number of patients with disease x number of features given (default 5)
+    def getFeatureVectors(self, diseaseID, features=None, negative=False):
+        ret = self.getDemographics(diseaseID, negative).drop('EXPLORYS_PATIENT_ID', 1)
         if features:
             return ret[features].as_matrix()
-        return ret[['STD_GENDER', 'STD_RACE', 'AGE', 'HBA1C', 'WEIGHT']].as_matrix()
+        return ret.as_matrix()
 
     # Returns a Data Frame of diagnosis dates and corresponding snomed IDs for a given patient
     # Requires a patient ID
