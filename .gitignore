@@ -69,6 +69,7 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+metastore_db/
 
 # pyenv
 .python-version
@@ -100,3 +101,5 @@ ENV/
 # mypy
 .mypy_cache/
 .DS_Store
+
+synthetic_data/

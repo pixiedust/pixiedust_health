@@ -29,6 +29,7 @@ class PixieHealthApp():
             'maximize': 'true'
         }
 
+
     def selectedDisease(self, disease):
         self.debug('selectedDisease: {}'.format(disease))
         if disease is not None and self.alldiseases is not None:
@@ -38,57 +39,44 @@ class PixieHealthApp():
                     break
 
         if self.selecteddisease is not None:
-            # TODO: get features, data for charting, etc (from API) for the selected disease
-            # hard code values for now tuple of (feature, selected)
-            #self.diseasefeatures = [('STD_GENDER', 'true'), ('STD_RACE', 'true'), ('AGE', 'true')]
             self.demographicDF = self.cohorts.getDemographics(self.selecteddisease[1])['pos']
-            # self.dataframe1 = pd.DataFrame({'num1': range(5), 
-            #                'str1': ['a', 'b', 'c', 'd', 'e'],
-            #                'num2': range(2, 7),
-            #                'str2': ['w', 'v', 'x', 'y', 'z']})
-            # self.dataframe2 = pd.DataFrame({'num1': range(50, 55), 
-            #                'state1': ['MA', 'NC', 'MD', 'OK', 'CA']})
             self.geodf = self.cohorts.geoFormatPostal(self.selecteddisease[1])
-            self.featureDF = self.cohorts.getFeatureVectors(self.selecteddisease[1])
-            self.selectedfeatureDF = self.featureDF
+            self.allfeaturesDF = self.cohorts.getFeatureVectors(self.selecteddisease[1])
+            self.selectedfeatureDF = self.allfeaturesDF
+            self.allfeaturesnames = self.cohorts.getFeatureNames(self.allfeaturesDF)
+
 
     def selectedFeatures(self, features):
         self.debug('selectedFeatures: {}'.format(features))
         selectedfeatures = features.split(',')
 
-        # update feature selection
         if len(selectedfeatures) > 0:
-            self.diseasefeatures = [(f, 'false') if f not in selectedfeatures else (f, 'true') for (f, s) in self.diseasefeatures]
-            self.selectedfeatureDF = self.cohorts.getFeaturesForModel(self.featureDF, selectedfeatures)
+            self.selectedfeatureDF = self.cohorts.getFeaturesForModel(self.allfeaturesDF, selectedfeatures)
 
 
     @route(page="classification")
     def page_classification(self):
-        # TODO: update model (accuracy, recall, precision, ROC)
-        # hard code values for now
-        self.x_train, self.y_train, self.x_test, self.y_test = self.cohorts.getTrainTestSets(self.selectedfeatureDF)
-        self.featurenames = self.cohorts.getFeatureNames(self.selectedfeatureDF)
-        self.clf, self.y_preds = self.cohorts.getRandomForestClassifier(self.x_train, self.y_train, self.x_test, self.featurenames)
-        self.featureimportance = self.cohorts.featureImportance(self.clf, self.x_train, self.featurenames)
-        self.accuracy, self.precision, self.recall = self.cohorts.getClassifierMetrics(self.clf, self.y_test, self.y_preds)
+        x_train, y_train, x_test, y_test = self.cohorts.getTrainTestSets(self.selectedfeatureDF)
+        featurenames = self.cohorts.getFeatureNames(self.selectedfeatureDF)
+        clf, y_preds = self.cohorts.getRandomForestClassifier(x_train, y_train, x_test, featurenames)
 
-        #self.dataframe3 = pd.DataFrame({'num1': [10, 15, 3, 17, 16], 'str1': ['a', 'b', 'c', 'd', 'e']})
-        modelapr = { 'accuracy': self.accuracy, 'precision': self.precision, 'recall': self.recall }
-        #featureimportance = ['AGE', 'STD_GENDER']
-        
+        accuracy, precision, recall = self.cohorts.getClassifierMetrics(clf, y_test, y_preds)
+        modelapr = { 'accuracy': accuracy, 'precision': precision, 'recall': recall }
+        featureimportance = self.cohorts.featureImportance(clf, x_train, featurenames)
 
-        self._addHTMLTemplate('page-classification.html', disease=self.selecteddisease, features=self.diseasefeatures, modelapr=modelapr, featureimportance=featureimportance)
+        featuresbyselection = [(f, 'false') if f not in featurenames else (f, 'true') for f in self.allfeaturesnames]
+
+        self._addHTMLTemplate('page-classification.html', disease=self.selecteddisease[0], features=featuresbyselection, modelapr=modelapr, featureimportance=featureimportance)
+
 
     @route(page="analytics")
     def page_analytics(self):
-        self._addHTMLTemplate('page-analytics.html', disease=self.selecteddisease)
+        self._addHTMLTemplate('page-analytics.html', disease=self.selecteddisease[0])
+
 
     @route()
     def page_start(self):
-        # TODO: get list of diseases from API
-        # hard code diseases for now
         self.cohorts = self.pixieapp_entity
-        self.alldiseases = [('Diabetes', 1), ('Hypertension', 2), ('Alzheimer', 3)]
-        self.diseasefeatures =[('HEIGHT', 'true'), ('WEIGHT', 'true'), ('HBA1C', 'true'), ('STD_GENDER', 'true'), ('AGE', 'true'), ('STD_ETHNICITY', 'true'), ('STD_RACE', 'true'), ('BMI', 'true')]
-        #self.diseasefeatures = [('STD_GENDER', 'true'), ('STD_RACE', 'true'), ('AGE', 'true')]
+        self.alldiseases = self.cohorts.getDiseases()
+
         self._addHTMLTemplate('page-start.html', diseases=self.alldiseases)

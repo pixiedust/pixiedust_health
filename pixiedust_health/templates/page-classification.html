@@ -69,7 +69,7 @@
     height: calc(100% - 45px);
   }
   .page-apr p {
-    font-size: 2em;
+    font-size: 1.5em;
   }
   .page-apr p > span {
     color: red;
@@ -77,8 +77,11 @@
   .page-apr p > span::after {
     content: "%";
   }
-  .page-importance {
-    font-size: 1.25em;
+  .page-importance p {
+    font-size: 1.5em;
+  }
+  .page-importance p > span {
+    color: red;
   }
   .page-buttons {
     text-align: right;
@@ -144,18 +147,16 @@ self.selectedFeatures("$val(activeFeatures)")
     <div class="col-xs-4 page-roc">
       <h2>ROC</h2>
       <div class="page-model-info">
-          <div pd_render_onload pd_entity="dataframe3"
-           pd_options="rendererId=matplotlib;handlerId=lineChart;keyFields=str1;valueFields=num1;legend=false"></div>
+          <!-- <div pd_render_onload pd_entity="dataframe3"
+           pd_options="rendererId=matplotlib;handlerId=lineChart;keyFields=str1;valueFields=num1;legend=false"></div> -->
       </div>
     </div>
     <div class="col-xs-4 page-importance">
       <h2>Feature Importance</h2>
       <div class="page-model-info">
-        <ol>
 {% for feature in featureimportance %}
-          <li>{{ feature[0]+": "+str(feature[1]) }}</li>
+        <p>{{ feature[0] }}: <span>{{ feature[1] }}</span></p>
 {% endfor %}
-        </ol>
       </div>
     </div>
   </div>

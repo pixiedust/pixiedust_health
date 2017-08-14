@@ -48,26 +48,22 @@ class Cohorts:
     
     ##-------------------------------------- Initialization --------------------------------------##
     
-#     def __init__(self, pathToData):
     def __init__(self, demographics, diagnosis, observations):
-#         demographics = pd.read_csv(pathToData + '/create_v_demographic.csv', delimiter="\t")
         print "demographics starting"
         self.demographics = self.__filterDemographics(demographics)
         print "demographics done"
         
-#         diagnosis = pd.read_csv(pathToData + '/create_v_diagnosis.csv', delimiter="\t")
         print "diagnosis starting"
         self.diagnosis = self.__filterDiagnosis(diagnosis)
-#         self.diagnosis = self.__filterDiagnosis(diagnosis)
 #         self.histories, self.diagnosis = self.__filterDiagnosis(diagnosis)
         print "diagnosis done"
         
-#         observations = pd.read_csv(pathToData + '/create_v_observation.csv', delimiter="\t")
         print "observations starting"
         self.observations = self.__getObservations(observations)
         print "observations done"
 
         self.demographicsFeatures = self.__getDemographicFeatures(observations)
+        
         
     # Returns filtered demographics data frame
     # Requires original demographics chart
@@ -80,13 +76,13 @@ class Cohorts:
         # ethnicity to indices
         dict_ethnicity = {'hispanic':1, 'non-hispanic':2, 'other':3, 'declined':4, 'unknown':4}
         filteredDemographics["STD_ETHNICITY"].replace(dict_ethnicity, inplace=True)
+        
         # race to indices
         dict_race = {101:1, 615:2, 203:3, 699:4}
         filteredDemographics["STD_RACE"].replace(dict_race, inplace=True)
         
         return filteredDemographics
     
-
     
     # Returns diagnosis history data frame
     # Requires original diagnosis histories chart
@@ -97,15 +93,18 @@ class Cohorts:
         filteredDiagnosis['SNOMED_IDS'] = snomedIDs.values
         filteredDiagnosis = filteredDiagnosis.groupby(['EXPLORYS_PATIENT_ID', 'DIAGNOSIS_DATE'], as_index=False).sum()
         return filteredDiagnosis
-       
+    
+    
     # Returns the BMI of a patient given their information in demographics
     # Designed to be used in the apply function in getFeatures()
     def __bmi(self, row):
         return (row['WEIGHT'] / row['HEIGHT']**2) * 10000
     
+    
     def __getObservations(self, observations):
         filteredObservations = observations[['EXPLORYS_PATIENT_ID', 'LOINC_TEST_ID', 'STD_VALUE', 'OBSERVATION_DATE']]
         return filteredObservations
+    
     
     # Returns filtered observation data frame
     # Requires original observations chart
@@ -123,12 +122,14 @@ class Cohorts:
         demographicCopy['BMI'] = bmis.values
         return demographicCopy
     
+    
     ##------------------------ Utility functions for filtering by disease ------------------------##
     
     # Returns a list of all patients we have a medical history for
     # Facilitates getPatientsWithoutDisease()
     def __getPatients(self):
         return set(self.diagnosis['EXPLORYS_PATIENT_ID'].values)
+    
     
     # Returns list of IDs for patients with a given disease
     # Requires disease ID
@@ -138,20 +139,23 @@ class Cohorts:
         filtered = self.diagnosis.loc[[not (set(item).isdisjoint(snomedIDs)) for item in self.diagnosis['SNOMED_IDS']]]
         return set(filtered['EXPLORYS_PATIENT_ID'].values)
     
+    
     # Returns list of IDs for patients without a given disease
     # Requires disease ID
     # Facilitates getDemographics() and used in machine learning component
     def __getPatientsWithoutDisease(self, diseaseID):
         return self.__getPatients() - self.__getPatientsWithDisease(diseaseID)
     
-        #-----------------------------------------------------------------------------------------#
+    
+    #-----------------------------------------------------------------------------------------------#
         
     # Returns the first date (if multiple) that a patient has recorded corresponding to SNOMED for diseaseID
     def __getDiagnosisDate(self, patientID, diseaseID):
         patient_diagnosis = self.diagnosis.loc[self.diagnosis['EXPLORYS_PATIENT_ID'] == patientID]
         snomedIDs = diseaseMap[diseaseID]['SnomedIDs']
         filtered = patient_diagnosis.loc[[not (set(item).isdisjoint(snomedIDs)) for item in patient_diagnosis['SNOMED_IDS']]]
-        return min(list(set(filtered['DIAGNOSIS_DATE'].values)))  
+        return min(list(set(filtered['DIAGNOSIS_DATE'].values)))
+    
     
     # Returns the observation table filtered on single loincID -- used in calculating average features
     def __getFilteredLoinc(self, loincID):
@@ -159,7 +163,8 @@ class Cohorts:
         # convert observation dates to datetime
         filtered_obs['OBSERVATION_DATE'] = filtered_obs.apply(lambda row: (datetime.strptime(row['OBSERVATION_DATE'], '%Y-%m-%d %H:%M:%S')),axis=1)
         return filtered_obs
-
+    
+    
     # Returns dataframe for patients with diseaseID from diagnosis table, and date/prev year date in datetime object form
     def __filterDiagnosisDateForDisease(self, diseaseID):
         snomedIDs = diseaseMap[diseaseID]['SnomedIDs']
@@ -169,6 +174,7 @@ class Cohorts:
         min_diagnosis_date = filtered.loc[filtered.groupby("EXPLORYS_PATIENT_ID")["DIAGNOSIS_DATE"].idxmin()]
         min_diagnosis_date['ONE_YEAR_PREV'] = min_diagnosis_date.apply(lambda row: (row['DIAGNOSIS_DATE'] - relativedelta(years=1)),axis=1)
         return min_diagnosis_date
+    
     
     # Returns dataframe with LOINC ID feature values averaged for the observations in the 12 months prior to diagnosis
     def __getAvgFeatures(self,diseaseID, loincID, label):
@@ -189,7 +195,8 @@ class Cohorts:
         obs_avg_patient = obs_avg_day.groupby(['EXPLORYS_PATIENT_ID']).mean().reset_index()
         obs_avg_patient.rename(columns={'STD_VALUE':label}, inplace=True)
         return obs_avg_patient
-
+    
+    
     # Returns dataframe with demographics joined with LOINC ID features for patients positive for a disease
     def __getPosSetFeatures(self, diseaseID, features=None):
         loincIDs = [('HBA1C', '4548-4'), ('WEIGHT', '29463-7'), ('HEIGHT', '8302-2')]
@@ -201,7 +208,8 @@ class Cohorts:
             features = avg_loinc.merge(features, how='inner', on='EXPLORYS_PATIENT_ID')
         features['BMI'] = features.apply(self.__bmi,axis=1)
         return features
-
+    
+    
     # Returns dataframe with the most recent LOINC ID feature value for patients without the disease
     def __getNegLoincFeature(self, diseaseID, loincID, label):
         #loincID = diseaseMap[diseaseID]['LoincIDs'][featureIdx]
@@ -216,6 +224,7 @@ class Cohorts:
         recent_obs_date.rename(columns={'STD_VALUE':label}, inplace=True)
         return recent_obs_date
     
+    
     # Returns dataframe with demographics joined with LOINC ID features for patients negative for a disease
     def __getNegSetFeatures(self, diseaseID):
         loincIDs = [('HBA1C', '4548-4'), ('WEIGHT', '29463-7'), ('HEIGHT', '8302-2')]
@@ -228,6 +237,7 @@ class Cohorts:
         features['BMI'] = features.apply(self.__bmi,axis=1)
         return features
     
+    
     #--------------------------------------- PUBLIC METHODS ---------------------------------------#
     
     # Returns list of (DisplayName, ID) for all diseases we have data for
@@ -235,6 +245,7 @@ class Cohorts:
     # Example return: [('Diabetes', 1), ('Hypertension', 2)]
     def getDiseases(self):
         return [(value['DisplayName'], key) for key, value in iteritems(diseaseMap)]
+    
     
     # Returns a dictionary of Data Frames, one for demographics and stats for patients with the given disease (key 'pos') 
     #   and one for patients who don't have that disease (key 'neg')
@@ -248,7 +259,7 @@ class Cohorts:
         pos_demographics = self.demographicsFeatures.loc[self.demographicsFeatures['EXPLORYS_PATIENT_ID'].isin(pos_patients)]
         neg_demographics = self.demographicsFeatures.loc[self.demographicsFeatures['EXPLORYS_PATIENT_ID'].isin(neg_patients)]
         return {'pos': pos_demographics, 'neg': neg_demographics}
-
+    
     
     # Returns a data frame including both patients with and without given disease
     # HAS_DISEASE column indicates whether a patient has the disease (1) or not (0)
@@ -268,9 +279,10 @@ class Cohorts:
         data.drop(['POSTAL_CODE_3'], axis=1, inplace=True)
         return data
     
+    
     # Returns a data frame including both patients with and without given disease to be fed into the model 
     # Purpose of this function is to accomodate the ability to select features in the app without the need to recompute all columns
-    # Columns returned by default: 'STD_GENDER', 'AGE', 'STD_ETHNICITY', 'STD_RACE', 'HBA1C', 'WEIGHT', 'HEIGHT', 'BMI', 'HAS_DISEASE'
+    # Feature Columns returned by default: 'STD_GENDER', 'AGE', 'STD_ETHNICITY', 'STD_RACE', 'HBA1C', 'WEIGHT', 'HEIGHT', 'BMI'
     # features argument must be some subset of the default columns in an array (that you wish to include)
     def getFeaturesForModel(self, data, features=None):
         if features != None:
@@ -280,8 +292,7 @@ class Cohorts:
         return data
     
     
-    
-        #---------------------------- Building the Model ---------------------------------#
+    #-------------------------------------- Building the Model -------------------------------------#
         
     # Returns training and testing data and label sets split 80/20
     # in the order: training data, training labels, testing data, testing labels
@@ -294,7 +305,8 @@ class Cohorts:
         y_train = x_train['HAS_DISEASE']
         y_test = x_test['HAS_DISEASE']
         return x_train, y_train, x_test, y_test
-
+    
+    
     # Returns array of the features to be used in the model from the data set
     # data is the table returned from getFeaturesForModel()
     def getFeatureNames(self, data):
@@ -302,7 +314,8 @@ class Cohorts:
         features = [item.encode('utf8') for item in data.columns]
         features = features[1:len(features)-2]
         return features
-
+    
+    
     # Returns trained 
     # takes in formatted data frame for people with and without the disease from cohorts class
     # data is output of getFeaturesForModel()
@@ -318,25 +331,29 @@ class Cohorts:
         # Apply the classifier we trained to the test data
         y_preds = clf.predict(x_test[features])
         return clf, y_preds
-
+    
+    
     ## Returns feature importance as determined by the trained model
     # clf is the variable the classifier is stored in
     def featureImportance(self, clf, x_train, features):
         # View a list of the features and their importance scores
         return list(zip(x_train[features], clf.feature_importances_))
-
+    
+    
     ## Returns the scores for accuracy, precision, and recall based on 
     def getClassifierMetrics(self, clf, y_test, y_preds):
         accuracy = metrics.accuracy_score(y_test, y_preds)
         precision = metrics.precision_score(y_test, y_preds)
         recall = metrics.recall_score(y_test, y_preds)
         return accuracy, precision, recall
-
+    
+    
     # NEEDS HELP - need to know more about ROC curves
     def getROC(self, ):
         #roc = metrics.roc_curve(y_)
         pass
-
+    
+    
     ## CROSS VALIDATION LEARN
     def getCrossVal(self, data, features):
         x_set = data[features]
@@ -344,7 +361,7 @@ class Cohorts:
         return cross_val_score(clf, x_set, y_set, cv=10)
     
     
-        #---------------------------- Geo Map ---------------------------------#
+    #------------------------------------------ Geo Map --------------------------------------------#
         
     def getzip3geo(self, zip3df, zip3dfzipcol):
         queryurl = "https://opendata.cloudant.com/zip3-us/_design/views/_view/zip"
@@ -363,7 +380,8 @@ class Cohorts:
         geodf = pd.DataFrame(docs)
         geodf = pd.merge(geodf, zip3df, on=zip3dfzipcol)
         return geodf
-
+    
+    
     # Returns the data frame used in displaying the chloropleth map for patients with a diease in the country
     # uses the function getzip3geo
     def geoFormatPostal(self, diseaseID):
