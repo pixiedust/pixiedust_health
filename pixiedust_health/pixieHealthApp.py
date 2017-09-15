@@ -40,7 +40,7 @@ class PixieHealthApp():
 
         if self.selecteddisease is not None:
             self.demographicDF = self.cohorts.getDemographics(self.selecteddisease[1])['pos']
-            self.geodf = self.cohorts.geoFormatPostal(self.selecteddisease[1])
+            # self.geodf = self.cohorts.geoFormatPostal(self.selecteddisease[1])
             self.allfeaturesDF = self.cohorts.getFeatureVectors(self.selecteddisease[1])
             self.selectedfeatureDF = self.allfeaturesDF
             self.allfeaturesnames = self.cohorts.getFeatureNames(self.allfeaturesDF)
@@ -56,17 +56,16 @@ class PixieHealthApp():
 
     @route(page="classification")
     def page_classification(self):
-        x_train, y_train, x_test, y_test = self.cohorts.getTrainTestSets(self.selectedfeatureDF)
+        clf_report, roc_df, feat_df = self.cohorts.getClassification(self.selectedfeatureDF)
         featurenames = self.cohorts.getFeatureNames(self.selectedfeatureDF)
-        clf, y_preds = self.cohorts.getRandomForestClassifier(x_train, y_train, x_test, featurenames)
-
-        accuracy, precision, recall = self.cohorts.getClassifierMetrics(clf, y_test, y_preds)
-        modelapr = { 'accuracy': accuracy, 'precision': precision, 'recall': recall }
-        featureimportance = self.cohorts.featureImportance(clf, x_train, featurenames)
 
         featuresbyselection = [(f, 'false') if f not in featurenames else (f, 'true') for f in self.allfeaturesnames]
 
-        self._addHTMLTemplate('page-classification.html', disease=self.selecteddisease[0], features=featuresbyselection, modelapr=modelapr, featureimportance=featureimportance)
+        self.clf_report = clf_report
+        self.roc_df = roc_df
+        self.feat_df = feat_df
+
+        self._addHTMLTemplate('page-classification.html', disease=self.selecteddisease[0], features=featuresbyselection)
 
 
     @route(page="analytics")

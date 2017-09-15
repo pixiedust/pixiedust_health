@@ -67,15 +67,17 @@
   </h2>
 
   <div class="row page-charts">
-    <div class="col-xs-6">
-      <div class="row half-size">
+    <div class="col-xs-12">
+      <div class="row">
         <div class="col-xs-6 page-chart-bar">
           <!-- ? bar chart //disease by race ? -->
+          <h2>Age Distribution by Race/WEIGHT</h2>
           <div pd_render_onload pd_entity="demographicDF"
            pd_options="clusterby=WEIGHT;rowCount=500;handlerId=pieChart;valueFields=AGE;rendererId=matplotlib;keyFields=STD_RACE;aggregation=SUM"></div>
         </div>
         <div class="col-xs-6 page-chart-scat">
           <!-- ? scatter //age of development ? -->
+          <h2>HBA1C Distribution by BMI</h2>
           <div pd_render_onload pd_entity="demographicDF"
            pd_options="rowCount=500;handlerId=scatterPlot;valueFields=HBA1C;keyFields=BMI;aggregation=SUM"></div>
         </div>
@@ -83,21 +85,26 @@
       <div class="row">
         <div class="col-xs-6 page-chart-hist">
           <!-- ? histogram //age vs # people ? -->
+          <h2>Age Distribution by Gender</h2>
           <div pd_render_onload pd_entity="demographicDF"
            pd_options="rowCount=500;handlerId=histogram;valueFields=AGE;keyFields=STD_GENDER;aggregation=SUM"></div>
         </div>
         <div class="col-xs-6 page-chart-pie">
           <!-- ? pie //male vs female vs undeclared ? -->
+          <h2>HBA1C Distribution by Race</h2>
           <div pd_render_onload pd_entity="demographicDF"
-           pd_options="rowCount=500;handlerId=pieChart;valueFields=AGE;keyFields=STD_GENDER;aggregation=SUM"></div>
+           pd_options="rowCount=500;handlerId=pieChart;valueFields=HBA1C;keyFields=STD_RACE;aggregation=SUM"></div>
         </div>
       </div>
     </div>
+      
+    <!--
     <div class="col-xs-6 page-chart-map">
-      <!-- ? map ? -->
+      <!-- ? map ?
       <div pd_render_onload pd_entity="geodf"
         pd_options="handlerId=mapView;keyFields=geometry;valueFields=PROPORTION;aggregation=SUM;rowCount=500;mapboxtoken=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4M29iazA2Z2gycXA4N2pmbDZmangifQ.-g_vE53SD2WrJ6tFX7QHmA;rendererId=mapbox"></div>
     </div>
+     -->
   </div>
 
   <div class="row page-buttons">

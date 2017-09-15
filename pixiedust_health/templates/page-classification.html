@@ -137,26 +137,26 @@ self.selectedFeatures("$val(activeFeatures)")
 
   <div class="row page-model">
     <div class="col-xs-4 page-apr">
-      <h2>Score</h2>
+      <h2>Classification Report</h2>
       <div class="page-model-info">
-        <p>Accuracy: <span>{{ modelapr['accuracy'] }}</span></p>
-        <p>Precision: <span>{{ modelapr['precision'] }}</span></p>
-        <p>Recall: <span>{{ modelapr['recall'] }}</span></p>
+          <div pd_render_onload pd_entity="clf_report"
+           pd_options="handlerId=dataframe"></div>
       </div>
     </div>
+
     <div class="col-xs-4 page-roc">
       <h2>ROC</h2>
       <div class="page-model-info">
-          <!-- <div pd_render_onload pd_entity="dataframe3"
-           pd_options="rendererId=matplotlib;handlerId=lineChart;keyFields=str1;valueFields=num1;legend=false"></div> -->
+          <div pd_render_onload pd_entity="roc_df"
+           pd_options="aggregation=AVG;rendererId=matplotlib;handlerId=lineChart;keyFields=fpr;valueFields=tpr,baseline"></div>
       </div>
     </div>
+
     <div class="col-xs-4 page-importance">
       <h2>Feature Importance</h2>
       <div class="page-model-info">
-{% for feature in featureimportance %}
-        <p>{{ feature[0] }}: <span>{{ feature[1] }}</span></p>
-{% endfor %}
+          <div pd_render_onload pd_entity="feat_df"
+           pd_options="rendererId=matplotlib;handlerId=barChart;keyFields=feat_name;valueFields=feat_imp;orientation=horizontal"></div>
       </div>
     </div>
   </div>
