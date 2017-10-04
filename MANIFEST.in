@@ -1,6 +1,6 @@
-recursive-include pixiedust templates/*
-recursive-include pixiedust templates/*/*
-recursive-include pixiedust resources/*
+recursive-include pixiedust_health templates/*
+recursive-include pixiedust_health templates/*/*
+recursive-include pixiedust_health resources/*
 recursive-exclude * __pycache__
 recursive-exclude * *.pyc
 recursive-exclude * *.pyo
